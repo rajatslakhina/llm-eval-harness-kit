@@ -72,8 +72,9 @@ public enum GateOutcome: Sendable, Hashable {
 /// metric.** A suite of 200 cases where the 12 refusal cases have collapsed to
 /// zero still shows a 94% global mean and still goes green under a global-only
 /// gate. So the gate here fails if *any* slice falls below its floor, regardless
-/// of how healthy the average looks — and the report leads with the worst slice
-/// rather than the headline number.
+/// of how healthy the average looks — and ``markdownSummary()`` prints the worst
+/// slice *above* the global mean, so the number that hides the problem does not
+/// get to go first.
 public struct EvalReport: Sendable {
     public let run: EvalRun
     public let verdicts: [String: CaseVerdict]
@@ -221,13 +222,15 @@ public struct EvalReport: Sendable {
         lines.append("")
         lines.append("- Prompt: `\(run.promptVersion)`")
         lines.append("- Model: `\(run.model.identifier)` build `\(run.model.build)` (\(run.model.tier.rawValue))")
-        lines.append("- Global mean: **\(EvalReport.rounded(globalMeanScore))**")
+        // Worst slice first, deliberately: the headline average is the number
+        // that hides the problem, so it does not get to go at the top.
         if let worst = worstSlice {
             lines.append(
                 "- Worst slice: **\(worst.slice)** at \(EvalReport.rounded(worst.meanScore))"
                 + (worst.worstCaseID.map { " (worst case `\($0)`)" } ?? "")
             )
         }
+        lines.append("- Global mean: \(EvalReport.rounded(globalMeanScore))")
         lines.append(
             "- Spend: \(run.budget.totalTokens) tokens, $\(EvalReport.rounded(run.budget.costUSD))"
             + (run.budget.p95LatencySeconds.map { ", p95 \(EvalReport.rounded($0))s" } ?? "")
