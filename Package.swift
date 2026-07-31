@@ -25,5 +25,9 @@ let package = Package(
         .target(name: "EvalHarnessUI", dependencies: ["EvalHarness"]),
 
         .testTarget(name: "EvalHarnessTests", dependencies: ["EvalHarness"]),
+
+        // Pins the demo scenarios themselves, so the outcomes the demo app's
+        // README claims are asserted rather than asserted-about.
+        .testTarget(name: "EvalHarnessUITests", dependencies: ["EvalHarnessUI", "EvalHarness"]),
     ]
 )

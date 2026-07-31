@@ -175,6 +175,7 @@ otherwise crash or lie:
 | `BudgetAndRunnerTests` | Percentile on empty and single samples, `p = 1.0`, zero concurrency, one failing case not destroying the report, fail-fast accounting |
 | `RegressionAndReportTests` | Prompt-regression vs. model-drift attribution, flaky quarantine ordering, empty-run gate, healthy-average-collapsed-slice, budget gate |
 | `EvalGateCITests` | **The gate itself, run as CI.** A real golden set, a record-then-replay hermeticity proof, and an assertion that an edited prompt fails the gate *while its global mean still clears the floor* |
+| `EvalHarnessUITests` | The demo scenarios, pinned through the **public** API only: the exact global means, worst slices, verdict kinds and cost-only budget failure that the demo app's README quotes |
 
 Run them with:
 
@@ -244,15 +245,21 @@ package dependency, exactly the way any external consumer would:
 Being specific about this, because a README that overclaims is worth less than one that says
 nothing.
 
-**What was verified.** `swift build -v` and `swift test -v` both pass on a `macos-latest` GitHub
-Actions runner — see the CI badge at the top, and
+**What was verified.** CI is green on the current head — see the badge above and
 [the workflow](https://github.com/rajatslakhina/llm-eval-harness-kit/actions/workflows/ci.yml).
-The first green run was CI #1 on commit `495439a` (58s; the only warning is the Node 20
-deprecation notice from `actions/checkout@v4`). That covers the whole package, `EvalHarnessUI`
-included, since macOS has SwiftUI. Every test listed above therefore actually ran and actually
-passed. All sources were additionally scanned by a Swift-aware static checker for delimiter
-balance and crash-prone patterns (force unwraps, `try!`, `as!`, implicitly-unwrapped optionals,
-`fatalError`, force-unwrapped collection accessors): zero hits across 22 files.
+That run executes `swift build -v`, `swift test -v`, and a dedicated
+`swift test --filter EvalGateCITests` step on a `macos-latest` runner, so the whole package
+compiles (`EvalHarnessUI` included, since macOS has SwiftUI) and every test listed above actually
+ran and actually passed. The only warning is the Node 20 deprecation notice from
+`actions/checkout@v4`.
+
+If you are browsing the Actions tab: several early runs show as **cancelled, not failed**. That is
+this workflow's own `concurrency: cancel-in-progress` setting superseding an in-flight run when the
+next push arrived, and it is working as intended.
+
+All sources were additionally scanned by a Swift-aware static checker for delimiter balance and
+crash-prone patterns (force unwraps, `try!`, `as!`, implicitly-unwrapped optionals, `fatalError`,
+force-unwrapped collection accessors): zero hits across every Swift file in the package.
 
 **What was not verified.** Linux is a design goal, not a tested one: the core target imports only
 Foundation and the SwiftUI layer is behind `#if canImport(SwiftUI)`, but CI runs macOS only and no
