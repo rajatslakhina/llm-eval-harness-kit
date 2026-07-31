@@ -21,6 +21,7 @@ public struct JudgeScorer: Scorer {
     private let judge: any EvalModel
     private let samples: Int
     private let disagreementThreshold: Double
+    private let passThreshold: Double
     private let decoding: DecodingParameters
     private let promptBuilder: @Sendable (GoldenCase, ModelResponse) -> String
 
@@ -29,12 +30,18 @@ public struct JudgeScorer: Scorer {
     ///     preferable so the median is an actual observation.
     ///   - disagreementThreshold: Spread (max − min) above which the case is
     ///     flagged. Defaults to 0.25 — a quarter of the scale.
+    ///   - passThreshold: Per-sample score at or above which that sample counts
+    ///     as passing. This exists so that a judge's ``ScoreBreakdown``
+    ///     reports real failures: a breakdown whose components can never fail
+    ///     silently tells ``CompositeScorer`` that a 0.0 judgement "passed", and
+    ///     the red gate stops being diagnosable.
     /// - Throws: ``EvalError/invalidJudgeConfiguration(reason:)``
     public init(
         name: String = "judge",
         judge: any EvalModel,
         samples: Int = 3,
         disagreementThreshold: Double = 0.25,
+        passThreshold: Double = 0.5,
         decoding: DecodingParameters = .deterministic,
         promptBuilder: @escaping @Sendable (GoldenCase, ModelResponse) -> String = JudgeScorer.defaultPrompt
     ) throws {
@@ -46,10 +53,16 @@ public struct JudgeScorer: Scorer {
                 reason: "disagreementThreshold must be non-negative, got \(disagreementThreshold)"
             )
         }
+        guard (0...1).contains(passThreshold) else {
+            throw EvalError.invalidJudgeConfiguration(
+                reason: "passThreshold must be within 0...1, got \(passThreshold)"
+            )
+        }
         self.name = name
         self.judge = judge
         self.samples = samples
         self.disagreementThreshold = disagreementThreshold
+        self.passThreshold = passThreshold
         self.decoding = decoding
         self.promptBuilder = promptBuilder
     }
@@ -113,7 +126,12 @@ public struct JudgeScorer: Scorer {
         return ScoreBreakdown(
             score: Score(median),
             components: values.enumerated().map { index, value in
-                .init(name: "sample-\(index)", weight: 1, passed: true, detail: "score \(value)")
+                .init(
+                    name: "sample-\(index)",
+                    weight: 1,
+                    passed: value >= passThreshold,
+                    detail: "score \(value) (pass threshold \(passThreshold))"
+                )
             },
             flags: flags,
             notes: notes

@@ -64,6 +64,24 @@ public struct BudgetSnapshot: Sendable, Hashable, Codable {
     public let p95LatencySeconds: Double?
     public let breaches: [BudgetBreach]
 
+    /// Public so that consumers outside this module can construct an
+    /// ``EvalRun`` — and therefore an ``EvalReport`` — without having to spin up
+    /// a ``BudgetLedger`` actor or round-trip JSON. Without this, testing your
+    /// own ``GateThresholds`` from another package is impossible.
+    public init(
+        inputTokens: Int,
+        outputTokens: Int,
+        costUSD: Double,
+        p95LatencySeconds: Double?,
+        breaches: [BudgetBreach]
+    ) {
+        self.inputTokens = max(0, inputTokens)
+        self.outputTokens = max(0, outputTokens)
+        self.costUSD = max(0, costUSD)
+        self.p95LatencySeconds = p95LatencySeconds
+        self.breaches = breaches
+    }
+
     public var totalTokens: Int { inputTokens + outputTokens }
     public var isWithinBudget: Bool { breaches.isEmpty }
 }
