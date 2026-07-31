@@ -1,5 +1,7 @@
 # llm-eval-harness-kit
 
+[![CI](https://github.com/rajatslakhina/llm-eval-harness-kit/actions/workflows/ci.yml/badge.svg)](https://github.com/rajatslakhina/llm-eval-harness-kit/actions/workflows/ci.yml)
+
 **You cannot unit-test a feature whose output is non-deterministic — but you still have to gate the merge.**
 
 `EvalHarness` is a Swift package that turns "did the LLM feature get worse?" into a hermetic,
@@ -68,7 +70,7 @@ waves it through and the finance conversation happens a quarter later with no at
 ## Architecture
 
 ```
-EvalHarness (Foundation only — builds and tests on Linux)
+EvalHarness (Foundation only — no UI, no networking)
 ├── GoldenSet / GoldenCase / Rubric      curated cases, validated at construction
 ├── PromptVersion / TranscriptKey        content-addressed cache key (FNV-1a, not Hasher)
 ├── TranscriptStore / ReplayingModel     hermeticity: record locally, replay in CI
@@ -172,12 +174,21 @@ otherwise crash or lie:
 | `ScoringTests` | NaN and out-of-range scores, weighted partial credit, malformed JSON, no-match numeric extraction, judge median/parse/disagreement |
 | `BudgetAndRunnerTests` | Percentile on empty and single samples, `p = 1.0`, zero concurrency, one failing case not destroying the report, fail-fast accounting |
 | `RegressionAndReportTests` | Prompt-regression vs. model-drift attribution, flaky quarantine ordering, empty-run gate, healthy-average-collapsed-slice, budget gate |
+| `EvalGateCITests` | **The gate itself, run as CI.** A real golden set, a record-then-replay hermeticity proof, and an assertion that an edited prompt fails the gate *while its global mean still clears the floor* |
 
 Run them with:
 
 ```bash
 swift test
 ```
+
+### The gate is wired into this repo's own CI
+
+`.github/workflows/ci.yml` runs `EvalGateCITests` as its own step. That case renders
+`EvalReport.markdownSummary()` into the GitHub Actions **job summary** and fails the build when
+the gate is red — which is exactly how a team adopting this package would wire it up. The headline
+claim of the project is therefore executed on every push rather than described in a README snippet
+nobody runs.
 
 ---
 
@@ -222,13 +233,31 @@ exit(report.gate.isPass ? 0 : 1)         // → merge gate
 The runnable demo lives in its own repository and consumes this package as a **remote** Swift
 package dependency, exactly the way any external consumer would:
 
-> Demo app: (added after the companion repo is pushed — see below)
+> **[rajatslakhina/llm-eval-harness-kit-demo-app](https://github.com/rajatslakhina/llm-eval-harness-kit-demo-app)**
+> — a SwiftUI app with three controls that reproduce a prompt regression, a model drift and a
+> budget breach on demand.
 
 ---
 
 ## Verification
 
-See the demo repository for the record of what was actually run and screenshotted.
+Being specific about this, because a README that overclaims is worth less than one that says
+nothing.
+
+**What was verified.** `swift build -v` and `swift test -v` both pass on a `macos-latest` GitHub
+Actions runner — see the CI badge at the top, and
+[the workflow](https://github.com/rajatslakhina/llm-eval-harness-kit/actions/workflows/ci.yml).
+The first green run was CI #1 on commit `495439a` (58s; the only warning is the Node 20
+deprecation notice from `actions/checkout@v4`). That covers the whole package, `EvalHarnessUI`
+included, since macOS has SwiftUI. Every test listed above therefore actually ran and actually
+passed. All sources were additionally scanned by a Swift-aware static checker for delimiter
+balance and crash-prone patterns (force unwraps, `try!`, `as!`, implicitly-unwrapped optionals,
+`fatalError`, force-unwrapped collection accessors): zero hits across 22 files.
+
+**What was not verified.** Linux is a design goal, not a tested one: the core target imports only
+Foundation and the SwiftUI layer is behind `#if canImport(SwiftUI)`, but CI runs macOS only and no
+Linux build has been executed. The iOS **app** target lives in the demo repository — see its
+README for exactly what was and was not run there.
 
 ## Licence
 
