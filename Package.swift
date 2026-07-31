@@ -16,12 +16,13 @@ let package = Package(
         .library(name: "EvalHarnessUI", targets: ["EvalHarnessUI"]),
     ],
     targets: [
-        // Platform-agnostic core. Foundation only — no UI, no networking,
-        // so it compiles and tests on Linux CI as well as Apple platforms.
+        // Platform-agnostic core. Foundation only — no UI, no networking — so it
+        // is intended to build and test on Linux as well as Apple platforms.
+        // Untested: CI runs macOS only. See the README's Verification section.
         .target(name: "EvalHarness"),
 
-        // SwiftUI presentation layer. Guarded with `#if canImport(SwiftUI)`
-        // so the package still builds on Linux, where SwiftUI does not exist.
+        // SwiftUI presentation layer, guarded with `#if canImport(SwiftUI)` so
+        // the package is expected to still build where SwiftUI does not exist.
         .target(name: "EvalHarnessUI", dependencies: ["EvalHarness"]),
 
         .testTarget(name: "EvalHarnessTests", dependencies: ["EvalHarness"]),

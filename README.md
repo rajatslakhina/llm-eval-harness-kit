@@ -57,9 +57,10 @@ A suite of 200 cases where the 12 refusal cases have collapsed to zero still rep
 global mean** and still goes green under an aggregate-only gate.
 
 So `EvalReport` fails the gate if **any single slice** falls below its floor, independently of
-the global average, and the report leads with the worst slice rather than the headline number.
-There is a test named exactly that (`testHealthyGlobalAverageDoesNotRescueACollapsedSlice`)
-because it is the claim the whole design rests on.
+the global average, and its CI summary prints the worst slice *above* the global mean — the
+number that hides the problem does not get to go first. There is a test named exactly that
+(`testHealthyGlobalAverageDoesNotRescueACollapsedSlice`) because it is the claim the whole design
+rests on.
 
 Cost and latency are gate conditions too, not dashboard metrics. A prompt change that improves
 quality by one point and triples token spend is a regression; a suite that only measures quality
