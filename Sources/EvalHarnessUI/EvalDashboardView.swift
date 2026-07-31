@@ -13,8 +13,10 @@ public final class EvalDashboardModel {
 
     // No property observer here on purpose: the `@Observable` macro rewrites
     // stored properties into computed ones, and `didSet` on a tracked property
-    // is not supported. The banner instead states which scenario the displayed
-    // report belongs to, so a stale result can never be misread.
+    // is not supported. Instead the banner prints the full scenario that
+    // produced the displayed report — prompt revision, provider build *and*
+    // budget setting — so a result left over from different controls is always
+    // identifiable as such.
     public var scenario = DemoScenario()
 
     private let store = InMemoryTranscriptStore()
@@ -58,7 +60,7 @@ public struct EvalDashboardView: View {
                     }
 
                     if let outcome = model.outcome {
-                        GateBanner(report: outcome.report)
+                        GateBanner(outcome: outcome)
                         HermeticityCard(outcome: outcome)
                         SlicesCard(report: outcome.report)
                         CasesCard(outcome: outcome)
@@ -68,7 +70,7 @@ public struct EvalDashboardView: View {
                             message: """
                             Pick a prompt revision and a provider build, then run the suite. \
                             The gate is deliberately configured with a loose global floor (0.70) \
-                            and a strict per-slice floor (0.70) so you can watch a healthy average \
+                            and a strict per-slice floor (0.80), so you can watch a healthy average \
                             fail to rescue a collapsed slice.
                             """,
                             tint: .secondary
@@ -148,8 +150,9 @@ private struct LabeledPicker<Content: View>: View {
 // MARK: - Gate
 
 private struct GateBanner: View {
-    let report: EvalReport
+    let outcome: DemoRunOutcome
 
+    private var report: EvalReport { outcome.report }
     private var passed: Bool { report.gate.isPass }
 
     var body: some View {
@@ -169,9 +172,12 @@ private struct GateBanner: View {
                 .font(.caption)
                 .foregroundStyle(.white.opacity(0.85))
 
-            Text("prompt \(report.run.promptVersion.description) · build \(report.run.model.build)")
+            // The scenario that produced *this* report, budget included — so a
+            // result left over from other control settings is obvious.
+            Text(outcome.scenarioSummary)
                 .font(.caption2.monospaced())
                 .foregroundStyle(.white.opacity(0.85))
+                .fixedSize(horizontal: false, vertical: true)
 
             if let worst = report.worstSlice {
                 Text("Worst slice: \(worst.slice) at \(Format.score(worst.meanScore))")

@@ -30,10 +30,18 @@ public struct DemoScenario: Sendable, Hashable {
         ModelDescriptor(identifier: "apple.foundation-models", build: modelBuild, tier: .onDevice)
     }
 
-    /// Deliberately loose global floor and a strict per-slice floor. That gap is
-    /// the whole demonstration: the aggregate stays green while a slice dies.
+    /// A deliberately loose global floor (0.70) and a strict per-slice floor
+    /// (0.80). The gap between those two numbers is the whole demonstration:
+    /// in both regression scenarios the aggregate stays comfortably above 0.70
+    /// while one slice drops under 0.80 and takes the gate down with it.
     public var thresholds: GateThresholds {
-        GateThresholds(minGlobalMeanScore: 0.7, minSliceMeanScore: 0.7, maxBlockingVerdicts: 0)
+        GateThresholds(minGlobalMeanScore: 0.7, minSliceMeanScore: 0.8, maxBlockingVerdicts: 0)
+    }
+
+    /// Human-readable identity of this scenario, including the budget — so a
+    /// displayed report can always be matched to the settings that produced it.
+    public var summary: String {
+        "prompt r\(promptRevision) · build \(modelBuild) · \(tightBudget ? "tight budget" : "normal budget")"
     }
 
     public var budget: RunBudget {
@@ -272,6 +280,10 @@ public struct DemoRunOutcome: Sendable {
     public let verdicts: [String: CaseVerdict]
     public let upstreamCalls: Int
     public let cachedTranscripts: Int
+    /// The full scenario — including the budget setting — that produced this
+    /// report, so the UI can never present a stale result as if it belonged to
+    /// the controls currently on screen.
+    public let scenarioSummary: String
 }
 
 public enum DemoRunner {
@@ -332,7 +344,8 @@ public enum DemoRunner {
             report: EvalReport(run: run, verdicts: verdicts, thresholds: scenario.thresholds),
             verdicts: verdicts,
             upstreamCalls: await counter.current(),
-            cachedTranscripts: await store.allRecords().count
+            cachedTranscripts: await store.allRecords().count,
+            scenarioSummary: scenario.summary
         )
     }
 }
