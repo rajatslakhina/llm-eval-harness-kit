@@ -243,6 +243,35 @@ final class ScoringTests: XCTestCase {
         XCTAssertEqual(breakdown.score.value, 0.8, accuracy: 0.0001)
     }
 
+    func testLowJudgeScoreProducesFailedComponentsSoCompositesStaySincere() async throws {
+        // Regression guard: a breakdown whose components can never fail tells
+        // CompositeScorer that a 0.0 judgement "passed", and the red gate stops
+        // being diagnosable.
+        let scorer = try JudgeScorer(judge: StubModel(alwaysReturning: "SCORE: 0.1"), samples: 1)
+        let goldenCase = try Fixture.goldenCase(id: "c1")
+        let breakdown = try await scorer.score(response: Fixture.response("x"), for: goldenCase)
+
+        XCTAssertEqual(breakdown.score.value, 0.1, accuracy: 0.0001)
+        XCTAssertFalse(breakdown.failedComponents.isEmpty, "a 0.1 judgement must register as a failed component")
+
+        let composite = CompositeScorer(entries: [.init(scorer: scorer, weight: 1)])
+        let composed = try await composite.score(response: Fixture.response("x"), for: goldenCase)
+        XCTAssertFalse(
+            composed.failedComponents.isEmpty,
+            "the composite must surface the judge's failure, not report it as passed"
+        )
+    }
+
+    func testJudgePassThresholdIsValidated() {
+        XCTAssertThrowsError(
+            try JudgeScorer(judge: StubModel(alwaysReturning: "SCORE: 1"), passThreshold: 1.5)
+        ) { error in
+            guard case .invalidJudgeConfiguration = (error as? EvalError) else {
+                return XCTFail("expected .invalidJudgeConfiguration, got \(error)")
+            }
+        }
+    }
+
     func testJudgeSamplesUseDistinctSeedsSoReplayDoesNotCollapseThem() async throws {
         // Regression guard: if every sample shared a seed they would share a
         // transcript key, and self-consistency would silently become one draw.
