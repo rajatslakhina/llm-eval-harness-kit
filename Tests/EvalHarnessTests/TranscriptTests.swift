@@ -21,17 +21,20 @@ final class TranscriptTests: XCTestCase {
     }
 
     func testKeyIsNotDerivedFromSwiftsRandomlySeededHasher() {
-        // A `Hasher`-derived key changes between processes. This asserts the
-        // digest is a fixed function of its input by checking a known length and
-        // a stable, deterministic value for a fixed input.
-        let digest = TranscriptKey.digest("stable-input")
-        XCTAssertEqual(digest.count, 32)
-        XCTAssertEqual(digest, TranscriptKey.digest("stable-input"))
-        XCTAssertNotEqual(digest, TranscriptKey.digest("stable-inpuu"))
+        // Golden constants, pinned. Within-process equality proves nothing —
+        // `Hasher` is stable inside a process too. Only a fixed expected value
+        // can fail for a `Hasher`-derived implementation, and process-
+        // independence is the entire reason this digest was hand-rolled: its
+        // failure mode is "replay is broken on CI only".
+        XCTAssertEqual(TranscriptKey.digest("stable-input"), "806e822b3a0335d7addff474ada1b16f")
+        XCTAssertNotEqual(TranscriptKey.digest("stable-input"), TranscriptKey.digest("stable-inpuu"))
     }
 
     func testDigestIsLowercaseHexAndZeroPadded() {
+        // The empty input exercises the offset basis unchanged by any mixing,
+        // so it pins the algorithm's starting constants as well as the format.
         let digest = TranscriptKey.digest("")
+        XCTAssertEqual(digest, "cbf29ce4842223259e3779b97f4a7c15")
         XCTAssertEqual(digest.count, 32)
         XCTAssertTrue(digest.allSatisfy { $0.isHexDigit && !$0.isUppercase })
     }
