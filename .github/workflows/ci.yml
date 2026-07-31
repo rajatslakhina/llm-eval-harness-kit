@@ -25,3 +25,10 @@ jobs:
 
       - name: Test
         run: swift test -v
+
+      # The package practising what it preaches: `EvalGateCITests` runs a real
+      # golden set, renders EvalReport.markdownSummary() into this job's summary,
+      # and fails the build when the gate is red. Run as its own step so the
+      # gate is visible in the CI UI rather than buried in the test log.
+      - name: Eval gate
+        run: swift test --filter EvalGateCITests
