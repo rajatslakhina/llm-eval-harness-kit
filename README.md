@@ -262,10 +262,15 @@ All sources were additionally scanned by a Swift-aware static checker for delimi
 crash-prone patterns (force unwraps, `try!`, `as!`, implicitly-unwrapped optionals, `fatalError`,
 force-unwrapped collection accessors): zero hits across every Swift file in the package.
 
+**The iOS app was built and run too.** The demo project resolved this package from GitHub at
+`eb5dd4c`, built, and launched on an iPhone 17 Simulator (iOS 26.3); the on-screen numbers match
+the asserted values exactly. See the
+[demo repository](https://github.com/rajatslakhina/llm-eval-harness-kit-demo-app#screenshots) for
+the captures.
+
 **What was not verified.** Linux is a design goal, not a tested one: the core target imports only
 Foundation and the SwiftUI layer is behind `#if canImport(SwiftUI)`, but CI runs macOS only and no
-Linux build has been executed. The iOS **app** target lives in the demo repository — see its
-README for exactly what was and was not run there.
+Linux build has been executed.
 
 ## Licence
 
